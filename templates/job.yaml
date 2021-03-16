@@ -6,17 +6,12 @@ metadata:
   labels:
     {{- include "container-build.labels" . | nindent 4 }}
 spec:
-  selector:
-    matchLabels:
-      {{- include "container-build.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       {{- with .Values.podAnnotations }}
       annotations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      labels:
-        {{- include "container-build.selectorLabels" . | nindent 8 }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -81,7 +76,7 @@ spec:
             - name: build
               mountPath: /build
             {{- if .Values.build.configMap.enabled }}
-            - name: {{ .Values.build.configMap.name | default (include "container-build.fullname" .) }}
+            - name: config
               mountPath: /build/Dockerfile
               subPath: Dockerfile
             {{- end }}
