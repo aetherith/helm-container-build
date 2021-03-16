@@ -1,0 +1,119 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "container-build.fullname" . }}
+  labels:
+    {{- include "container-build.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "container-build.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "container-build.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "container-build.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- if and (.Values.build.url.enabled) (.Values.build.url.authSecret.enabled) }}
+          env:
+            - name: USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.build.url.authSecret.name | default (include "container-build.configAuthSecretName" .) }}
+                  key: username
+            - name: PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.build.url.authSecret.name | default (include "container-build.configAuthSecretName" .) }}
+                  key: password
+          {{- end }}
+          command:
+            - "/usr/bin/bash"
+            - "-c"
+          args:
+            - >
+              buildah bud
+              {{- if .Values.build.configMap.enabled }}
+              --file /build/Dockerfile
+              {{- else if .Values.build.url.enabled }}
+              {{- if .Values.build.url.authSecret.enabled }}
+              --file {{ include "container-build.basicAuthConfigUrl" . }}
+              {{- else }}
+              --file {{ .Values.build.url.uri }}
+              {{- end }}
+              {{- else if .Values.build.git.enabled }}
+              --file {{ .Values.build.git.uri }}
+              {{- end }}
+              --storage-driver vfs
+              --tag "{{ .Values.build.destination.repository }}:{{ .Values.build.destination.tag }}"
+              &&
+              buildah push
+              {{- with .Values.build.destination }}
+              "{{ .repository }}:{{ .tag }}"
+              docker://{{ .registry }}/{{ .repository }}:{{ .tag }}
+              {{- end }}
+          volumeMounts:
+            - name: cache
+              mountPath: /var/containers
+            - name: build
+              mountPath: /build
+            {{- if .Values.build.configMap.enabled }}
+            - name: {{ .Values.build.configMap.name | default (include "container-build.fullname" .) }}
+              mountPath: /build/Dockerfile
+              subPath: Dockerfile
+            {{- end }}
+            {{- if and (.Values.build.git.enabled) (.Values.build.git.authSecret.enabled) }}
+            - name: ssh-key
+              mountPath: "/root/.ssh"
+              readOnly: true
+            {{- end }}
+          volumes:
+            - name: cache
+              emptyDir: {}
+            - name: build
+              emptyDir: {}
+            {{- if .Values.build.configMap.enabled }}
+            - name: config
+              configMap:
+                name: {{ .Values.build.configMap.name | default (include "container-build.fullname" .) }}
+            {{- end }}
+            {{- if and (.Values.build.git.enabled) (.Values.build.git.authSecret.enabled) }}
+            - name: ssh-key
+              secret:
+                secretName: {{ .Values.build.git.authSecret.name | default (include "container-build.configAuthSecretName" .) }}
+                items:
+                  - key: ssh-privatekey
+                    path: id_rsa
+            {{- end }}
+          restartPolicy: {{ .Values.podRestartPolicy }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
