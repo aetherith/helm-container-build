@@ -60,15 +60,18 @@ spec:
               --authfile /root/source-auth
               {{- end }}
               --storage-driver vfs
+              --format docker
               --tag "{{ .Values.build.destination.repository }}:{{ .Values.build.destination.tag }}"
               &&
+              buildah images
+              &&
               buildah push
+              {{- if .Values.build.destination.authSecret.enabled }}
+              --authfile /root/destination-auth
+              {{- end }}
               {{- with .Values.build.destination }}
               "{{ .repository }}:{{ .tag }}"
               docker://{{ .registry }}/{{ .repository }}:{{ .tag }}
-              {{- end }}
-              {{- if .Values.build.destination.authSecret.enabled }}
-              --authfile /root/destination-auth
               {{- end }}
           volumeMounts:
             - name: cache
