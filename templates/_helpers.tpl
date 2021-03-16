@@ -30,6 +30,22 @@ Create authSecret name for URL and Git config sources.
 {{- printf "%s-config-auth" (include "container-build.fullname" .) | trunc 51 | trimSuffix "-" }}
 {{- end }}
 
+{{- define "container-build.sourceAuthSecretName" -}}
+{{- printf "%s-source-auth" (include "container-build.fullname" .) | trunc 51 | trimSuffix "-" }}
+{{- end }}
+
+{{- define "container-build.sourceAuthSecretData" -}}
+{{- printf "%s:%s" .username .password | b64enc }}
+{{- end }}
+
+{{- define "container-build.destinationAuthSecretName" -}}
+{{- printf "%s-dest-auth" (include "container-build.fullname" .) | trunc 53 | trimSuffix "-" }}
+{{- end }}
+
+{{- define "container-build.destinationAuthSecretData" -}}
+{{- printf "%s:%s" .authSecret.username .authSecret.password | b64enc }}
+{{- end }}
+
 {{/*
 Create a HTTP basic authentication enabled URL.
 */}}

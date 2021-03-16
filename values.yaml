@@ -36,6 +36,7 @@ build:
     authSecret:
       create: true
       name: ""
+      registry: ""
       username: ""
       password: ""
   destination:
