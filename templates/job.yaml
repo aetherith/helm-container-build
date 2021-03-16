@@ -61,6 +61,9 @@ spec:
               {{- else if .Values.build.git.enabled }}
               --file {{ .Values.build.git.uri }}
               {{- end }}
+              {{- if .Values.build.source.authSecret.enabled }}
+              --authfile /root/source-auth
+              {{- end }}
               --storage-driver vfs
               --tag "{{ .Values.build.destination.repository }}:{{ .Values.build.destination.tag }}"
               &&
@@ -68,6 +71,9 @@ spec:
               {{- with .Values.build.destination }}
               "{{ .repository }}:{{ .tag }}"
               docker://{{ .registry }}/{{ .repository }}:{{ .tag }}
+              {{- end }}
+              {{- if .Values.build.destination.authSecret.enabled }}
+              --authfile /root/destination-auth
               {{- end }}
           volumeMounts:
             - name: cache
@@ -84,27 +90,55 @@ spec:
               mountPath: "/root/.ssh"
               readOnly: true
             {{- end }}
-          volumes:
-            - name: cache
-              emptyDir: {}
-            - name: build
-              emptyDir: {}
-            {{- if .Values.build.configMap.enabled }}
-            - name: config
-              configMap:
-                name: {{ .Values.build.configMap.name | default (include "container-build.fullname" .) }}
+            {{- if .Values.build.source.authSecret.enabled }}
+            - name: source-auth
+              mountPath: "/root/source-auth"
+              subPath: source-auth
+              readOnly: true
             {{- end }}
-            {{- if and (.Values.build.git.enabled) (.Values.build.git.authSecret.enabled) }}
-            - name: ssh-key
-              secret:
-                secretName: {{ .Values.build.git.authSecret.name | default (include "container-build.configAuthSecretName" .) }}
-                items:
-                  - key: ssh-privatekey
-                    path: id_rsa
+            {{- if .Values.build.destination.authSecret.enabled }}
+            - name: destination-auth
+              mountPath: "/root/destination-auth"
+              subPath: destination-auth
+              readOnly: true
             {{- end }}
-          restartPolicy: {{ .Values.podRestartPolicy }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: cache
+          emptyDir: {}
+        - name: build
+          emptyDir: {}
+        {{- if .Values.build.configMap.enabled }}
+        - name: config
+          configMap:
+            name: {{ .Values.build.configMap.name | default (include "container-build.fullname" .) }}
+        {{- end }}
+        {{- if and (.Values.build.git.enabled) (.Values.build.git.authSecret.enabled) }}
+        - name: ssh-key
+          secret:
+            secretName: {{ .Values.build.git.authSecret.name | default (include "container-build.configAuthSecretName" .) }}
+            items:
+              - key: ssh-privatekey
+                path: id_rsa
+        {{- end }}
+        {{- if .Values.build.source.authSecret.enabled }}
+        - name: source-auth
+          secret:
+            secretName: {{ .Values.build.source.authSecret.name | default (include "container-build.sourceAuthSecretName" .) }}
+            items:
+              - key: .dockerconfigjson
+                path: source-auth
+        {{- end }}
+        {{- if .Values.build.destination.authSecret.enabled }}
+        - name: destination-auth
+          secret:
+            secretName: {{ .Values.build.destination.authSecret.name | default (include "container-build.destinationAuthSecretName" .) }}
+            items:
+              - key: .dockerconfigjson
+                path: destination-auth
+        {{- end }}
+      restartPolicy: {{ .Values.podRestartPolicy }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

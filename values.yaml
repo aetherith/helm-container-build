@@ -34,6 +34,7 @@ build:
       sshPrivateKey: ""
   source:
     authSecret:
+      enabled: false
       create: true
       name: ""
       registry: ""
@@ -44,6 +45,7 @@ build:
     repository: ""
     tag: ""
     authSecret:
+      enabled: false
       create: true
       name: ""
       username: ""
