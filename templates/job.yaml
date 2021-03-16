@@ -41,7 +41,7 @@ spec:
           {{- end }}
           command:
             - "/usr/bin/bash"
-            - "-c"
+            - "-cx"
           args:
             - >
               buildah bud
