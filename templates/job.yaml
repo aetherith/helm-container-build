@@ -46,7 +46,7 @@ spec:
             - >
               buildah bud
               {{- if .Values.build.configMap.enabled }}
-              --file /build/Dockerfile
+              --file Dockerfile
               {{- else if .Values.build.url.enabled }}
               {{- if .Values.build.url.authSecret.enabled }}
               --file {{ include "container-build.basicAuthConfigUrl" . }}
@@ -62,10 +62,10 @@ spec:
               --storage-driver vfs
               --format docker
               --tag "{{ .Values.build.destination.repository }}:{{ .Values.build.destination.tag }}"
-              &&
-              buildah images
+              /build
               &&
               buildah push
+              --storage-driver vfs
               {{- if .Values.build.destination.authSecret.enabled }}
               --authfile /root/destination-auth
               {{- end }}
@@ -75,7 +75,7 @@ spec:
               {{- end }}
           volumeMounts:
             - name: cache
-              mountPath: /var/containers
+              mountPath: /var/lib/containers
             - name: build
               mountPath: /build
             {{- if .Values.build.configMap.enabled }}
