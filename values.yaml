@@ -19,7 +19,7 @@ build:
     enabled: false
     uri: ""
     authSecret:
-      enabled: true
+      enabled: false
       create: true
       name: ""
       username: ""
@@ -28,7 +28,7 @@ build:
     enabled: false
     uri: ""
     authSecret:
-      enabled: true
+      enabled: false
       create: true
       name: ""
       sshPrivateKey: ""
